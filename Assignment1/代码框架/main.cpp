@@ -28,9 +28,9 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
     // Then return it.
     Eigen::Matrix4f rotate;
     rotate << cos(rotation_angle / 180 * MY_PI), -sin(rotation_angle / 180 * MY_PI), 0, 0,
-              sin(rotation_angle / 180 * MY_PI), cos(rotation_angle / 180 * MY_PI), 0, 0,
-              0, 0, 1, 0,
-              0, 0, 0, 1;
+        sin(rotation_angle / 180 * MY_PI), cos(rotation_angle / 180 * MY_PI), 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1;
     model = rotate * model;
     return model;
 }
@@ -50,27 +50,43 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     float top = zNear * tan(eye_fov / 2 / 180 * MY_PI);
     float right = top * aspect_ratio;
     persp2ortho << zNear, 0, 0, 0,
-                   0, zNear, 0, 0,
-                   0, 0, zNear + zFar, -zNear * zFar,
-                   0, 0, 1, 0;
+        0, zNear, 0, 0,
+        0, 0, zNear + zFar, -zNear * zFar,
+        0, 0, 1, 0;
     ortho << 1 / right, 0, 0, 0,
-                0, 1 / top, 0, 0,
-                0, 0, 2 / (zNear - zFar), 0,
-                0, 0, 0, 1;
+        0, 1 / top, 0, 0,
+        0, 0, 2 / (zNear - zFar), 0,
+        0, 0, 0, 1;
     projection = ortho * persp2ortho * projection;
     return projection;
 }
 
-int main(int argc, const char** argv)
+Eigen::Matrix4f get_rotation(Vector3f axis, float angle)
+{
+    Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
+    Eigen::Matrix3f N = Eigen::Matrix3f::Identity();
+    N << 0, -axis.z(), axis.y(),
+        axis.z(), 0, -axis.x(),
+        -axis.y(), axis.x(), 0;
+    // Rodrigues' rotation formula
+    rotation.block<3, 3>(0, 0) = cos(angle / 180 * MY_PI) * Eigen::Matrix3f::Identity() + (1 - cos(angle / 180 * MY_PI)) * axis * axis.transpose() + sin(angle / 180 * MY_PI) * N;
+    //使用了齐次坐标，所以最后一行和最后一列都是0，最后一个元素是1
+    rotation(3, 3) = 1;
+    return rotation;
+}
+
+int main(int argc, const char **argv)
 {
     float angle = 0;
     bool command_line = false;
     std::string filename = "output.png";
 
-    if (argc >= 3) {
+    if (argc >= 3)
+    {
         command_line = true;
         angle = std::stof(argv[2]); // -r by default
-        if (argc == 4) {
+        if (argc == 4)
+        {
             filename = std::string(argv[3]);
         }
         else
@@ -91,7 +107,8 @@ int main(int argc, const char** argv)
     int key = 0;
     int frame_count = 0;
 
-    if (command_line) {
+    if (command_line)
+    {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
         r.set_model(get_model_matrix(angle));
@@ -107,7 +124,8 @@ int main(int argc, const char** argv)
         return 0;
     }
 
-    while (key != 27) {
+    while (key != 27)
+    {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
         r.set_model(get_model_matrix(angle));
@@ -123,10 +141,12 @@ int main(int argc, const char** argv)
 
         std::cout << "frame count: " << frame_count++ << '\n';
 
-        if (key == 'a') {
+        if (key == 'a')
+        {
             angle += 10;
         }
-        else if (key == 'd') {
+        else if (key == 'd')
+        {
             angle -= 10;
         }
     }
