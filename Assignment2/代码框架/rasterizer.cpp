@@ -133,7 +133,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     //z_interpolated *= w_reciprocal;
     for (int x = x_min; x <= x_max; x++){
         for (int y = y_min; y <= y_max; y++){
-            if (insideTriangle(x, y, t.v)){
+            if (insideTriangle(x+0.5, y+0.5, t.v)){
                 float min_depth = FLT_MAX; //默认值为无穷大（远）
                 auto[alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
                 float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
