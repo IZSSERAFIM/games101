@@ -43,6 +43,20 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 static bool insideTriangle(int x, int y, const Vector3f* _v)
 {   
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
+    Eigen::Vector3f p(x, y, 0);
+    Eigen::Vector3f v0 = _v[0];
+    Eigen::Vector3f v1 = _v[1];
+    Eigen::Vector3f v2 = _v[2];
+    Eigen::Vector3f e0 = v1 - v0;
+    Eigen::Vector3f e1 = v2 - v1;
+    Eigen::Vector3f e2 = v0 - v2;
+    Eigen::Vector3f p0 = p - v0;
+    Eigen::Vector3f p1 = p - v1;
+    Eigen::Vector3f p2 = p - v2;
+    float c0 = e0.cross(p0).z();
+    float c1 = e1.cross(p1).z();
+    float c2 = e2.cross(p2).z();
+    return (c0 > 0 && c1 > 0 && c2 > 0) || (c0 < 0 && c1 < 0 && c2 < 0);
 }
 
 static std::tuple<float, float, float> computeBarycentric2D(float x, float y, const Vector3f* v)
@@ -108,12 +122,33 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     
     // TODO : Find out the bounding box of current triangle.
     // iterate through the pixel and find if the current pixel is inside the triangle
-
+    float x_min = std::min(v[0].x(), std::min(v[1].x(), v[2].x()));
+    float x_max = std::max(v[0].x(), std::max(v[1].x(), v[2].x()));
+    float y_min = std::min(v[0].y(), std::min(v[1].y(), v[2].y()));
+    float y_max = std::max(v[0].y(), std::max(v[1].y(), v[2].y()));
     // If so, use the following code to get the interpolated z value.
     //auto[alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
     //float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
     //float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
     //z_interpolated *= w_reciprocal;
+    for (int x = x_min; x <= x_max; x++){
+        for (int y = y_min; y <= y_max; y++){
+            if (insideTriangle(x, y, t.v)){
+                float min_depth = FLT_MAX; //默认值为无穷大（远）
+                auto[alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
+                float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                z_interpolated *= w_reciprocal;
+                min_depth = std::min(min_depth, z_interpolated);
+                int index = get_index(x, y);
+                if (min_depth < depth_buf[index]){
+                    depth_buf[index] = min_depth;
+                    Eigen::Vector3f color = t.getColor();
+                    set_pixel(Eigen::Vector3f(x, y, min_depth), color);
+                }
+            }
+        }
+    }
 
     // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
 }
