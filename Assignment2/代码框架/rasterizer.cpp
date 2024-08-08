@@ -118,6 +118,7 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
 
 //Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t) {
+    /*
     auto v = t.toVector4();
     
     // TODO : Find out the bounding box of current triangle.
@@ -126,6 +127,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     float x_max = std::max(v[0].x(), std::max(v[1].x(), v[2].x()));
     float y_min = std::min(v[0].y(), std::min(v[1].y(), v[2].y()));
     float y_max = std::max(v[0].y(), std::max(v[1].y(), v[2].y()));
+    float alpha, beta, gamma;
     // If so, use the following code to get the interpolated z value.
     //auto[alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
     //float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
@@ -133,7 +135,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     //z_interpolated *= w_reciprocal;
     for (int x = x_min; x <= x_max; x++){
         for (int y = y_min; y <= y_max; y++){
-            if (insideTriangle(x+0.5, y+0.5, t.v)){
+            if (insideTriangle(x, y, t.v)){
                 float min_depth = FLT_MAX; //默认值为无穷大（远）
                 auto[alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
                 float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
@@ -151,6 +153,44 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     }
 
     // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
+
+    */
+   
+    /*------------------------------------------------------------------------------------------------------------------*/
+    // NOTICE : with MSAA
+    auto v = t.toVector4();
+    float x_min = std::min(v[0].x(), std::min(v[1].x(), v[2].x()));
+    float x_max = std::max(v[0].x(), std::max(v[1].x(), v[2].x()));
+    float y_min = std::min(v[0].y(), std::min(v[1].y(), v[2].y()));
+    float y_max = std::max(v[0].y(), std::max(v[1].y(), v[2].y()));
+
+    for (int x = x_min; x <= x_max; x++){
+        for (int y = y_min; y <= y_max; y++){
+            int count = 0;
+            float min_depth = FLT_MAX;
+            for (int i = 0; i < 2; i++){
+                for (int j = 0; j < 2; j++){
+                    if (insideTriangle(x + 0.25 + 0.5 * i, y + 0.25 + 0.5 * j, t.v)){
+                        auto[alpha, beta, gamma] = computeBarycentric2D(x + 0.25 + 0.5 * i, y + 0.25 + 0.5 * j, t.v);
+                        float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                        float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                        z_interpolated *= w_reciprocal;
+                        min_depth = std::min(min_depth, z_interpolated);
+                        count++;
+                    }
+                }
+            }
+            if (count){
+                int index = get_index(x, y);
+                if (min_depth < depth_buf[index]){
+                    depth_buf[index] = min_depth;
+                    Eigen::Vector3f color = t.getColor() * count / 4.0;
+                    set_pixel(Eigen::Vector3f(x, y, min_depth), color);
+                }
+            }
+        }
+    }
+    
 }
 
 void rst::rasterizer::set_model(const Eigen::Matrix4f& m)
